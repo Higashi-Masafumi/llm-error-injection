@@ -1,0 +1,57 @@
+{
+    "name": "Diffusion-LM Error Injection Container",
+    // 既存のdocker-compose.ymlを利用することを指定
+    "dockerComposeFile": "../docker-compose.yml",
+
+    // docker-compose.ymlで定義したサービス名を指定
+    "service": "dev-container",
+
+    // コンテナ内でVS Codeを開いた際のワークスペースを指定
+    "workspaceFolder": "/work",
+
+    // コンテナ起動時に実行するコマンド
+    "postCreateCommand": "pip install -r requirements.txt",
+
+    // インストールする拡張機能
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.black-formatter",
+                "njpwerner.autodocstring",
+                "ms-python.pylint",
+                "ms-python.isort"
+            ],
+            "settings": {
+                // Python設定
+                "python.defaultInterpreterPath": "/usr/bin/python3",
+                "python.linting.enabled": true,
+                "python.linting.pylintEnabled": true,
+                
+                // フォーマッター設定
+                "python.formatting.provider": "none",
+                "[python]": {
+                    "editor.defaultFormatter": "ms-python.python",
+                    "editor.formatOnSave": true,
+                    "editor.codeActionsOnSave": {
+                        "source.organizeImports": "explicit"
+                    }
+                },
+                
+                // Black設定
+                "black-formatter.args": ["--line-length", "88"],
+                
+                // isort設定（import文の整理）
+                "isort.args": ["--profile", "black"],
+                
+                // autodocstring設定
+                "autoDocstring.docstringFormat": "google",
+                
+                // その他のエディタ設定
+                "editor.rulers": [88],
+                "files.trimTrailingWhitespace": true,
+                "files.insertFinalNewline": true
+            }
+        }
+    }
+}

@@ -25,9 +25,7 @@
             "settings": {
                 // Python設定
                 "python.defaultInterpreterPath": "/usr/bin/python3",
-                "python.linting.enabled": true,
-                "python.linting.pylintEnabled": true,
-                
+
                 // フォーマッター設定
                 "python.formatting.provider": "none",
                 "[python]": {
@@ -37,18 +35,13 @@
                         "source.organizeImports": "explicit"
                     }
                 },
-                
-                // Black設定
-                "black-formatter.args": ["--line-length", "88"],
-                
+
                 // isort設定（import文の整理）
                 "isort.args": ["--profile", "black"],
-                
+
                 // autodocstring設定
                 "autoDocstring.docstringFormat": "google",
-                
-                // その他のエディタ設定
-                "editor.rulers": [88],
+
                 "files.trimTrailingWhitespace": true,
                 "files.insertFinalNewline": true
             }

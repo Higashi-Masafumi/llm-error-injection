@@ -360,6 +360,11 @@ class ModelConfig():
     See :data:`TrainConfig.precision` instead.
     """
 
+    inject_mlp_error: bool = True
+    """
+    Whether to inject fused MLP layers into the model.
+    """
+
     @property
     def effective_n_kv_heads(self) -> int:
         if self.n_kv_heads is None:

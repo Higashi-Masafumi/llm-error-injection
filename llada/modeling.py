@@ -25,13 +25,7 @@ import torch
 import torch.backends.cuda
 import torch.nn as nn
 import torch.nn.functional as F
-from torch import einsum
-from transformers import PreTrainedModel
-from transformers.cache_utils import Cache
-from transformers.modeling_outputs import CausalLMOutputWithPast
-from transformers.models.auto import AutoModel
-
-from .config import (
+from config import (
     ActivationCheckpointingStrategy,
     ActivationType,
     BlockType,
@@ -41,6 +35,11 @@ from .config import (
     ModelConfig,
     StrEnum,
 )
+from torch import einsum
+from transformers import PreTrainedModel
+from transformers.cache_utils import Cache
+from transformers.modeling_outputs import CausalLMOutputWithPast
+from transformers.models.auto import AutoModel
 
 if sys.version_info.minor > 8:
     from collections.abc import MutableMapping
@@ -767,6 +766,7 @@ class LLaDASequentialBlock(LLaDABlock):
         self.ff_proj = nn.Linear(
             config.d_model, self.hidden_size, bias=config.include_bias, device=config.init_device
         )
+        self.inject_error_mlp = config.inject_mlp_error
 
     def reset_parameters(self):
         super().reset_parameters()
@@ -821,6 +821,10 @@ class LLaDASequentialBlock(LLaDABlock):
         else:
             x = self.ff_norm(x)
         x = self.ff_proj(x)
+        if self.inject_error_mlp:
+            eps = torch.randn_like(x) * 0.01
+            x = x * (1 + eps)
+            print("inject error in MLP")
         if self._activation_checkpoint_fn is not None:
             x = self._activation_checkpoint_fn(self.act, x)  # type: ignore
         else:
@@ -870,6 +874,7 @@ class LLaDALlamaBlock(LLaDABlock):
         self.up_proj = nn.Linear(
             config.d_model, self.hidden_size, bias=config.include_bias, device=config.init_device
         )
+        self.inject_error_mlp = config.inject_mlp_error
 
     def reset_parameters(self):
         super().reset_parameters()
@@ -921,12 +926,20 @@ class LLaDALlamaBlock(LLaDABlock):
         else:
             x = self.ff_norm(x)
         x, x_up = self.ff_proj(x), self.up_proj(x) # new add
+        if self.inject_error_mlp:
+            eps = torch.randn_like(x) * 0.01
+            up_eps = torch.randn_like(x_up) * 0.01
+            x = x * (1 + eps)
+            x_up = x_up * (1 + up_eps) # new add
         if self._activation_checkpoint_fn is not None:
             x = self._activation_checkpoint_fn(self.act, x)  # type: ignore
         else:
             x = self.act(x)
         x = x * x_up # new add
         x = self.ff_out(x)
+        if self.inject_error_mlp:
+            eps = torch.randn_like(x) * 0.01
+            x = x * (1 + eps)
         x = self.dropout(x)
         x = og_x + x
 

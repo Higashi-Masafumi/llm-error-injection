@@ -7,7 +7,7 @@ services:
     image: ttorch-nvidia:u22.04c12.2t2.2.0v1
 
     # コンテナ名
-    container_name: diffusion-lm
+    container_name: diffusion-lm-eror-injection
 
     # ポートフォワーディング
     ports:

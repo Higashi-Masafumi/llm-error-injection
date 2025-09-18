@@ -27,7 +27,7 @@
                 "python.defaultInterpreterPath": "/usr/bin/python3",
 
                 // フォーマッター設定
-                "python.formatting.provider": "none",
+                "python.formatting.provider": "black",
                 "[python]": {
                     "editor.defaultFormatter": "ms-python.python",
                     "editor.formatOnSave": true,

@@ -2,6 +2,7 @@ import argparse
 import logging
 
 import jinja2
+import torch
 import tqdm
 from config import LLaDAConfig
 from generation_utils import generate
@@ -10,6 +11,8 @@ from lm_eval.api.instance import Instance
 from lm_eval.api.model import LM
 from lm_eval.api.registry import register_model
 from lm_eval.loggers.evaluation_tracker import EvaluationTracker
+from lm_eval.loggers import WandbLogger
+from lm_eval.utils import simple_parse_args_string
 from modeling import LLaDAModelLM
 from transformers import AutoTokenizer
 
@@ -24,13 +27,15 @@ class LLaDAEvalModel(LM):
     Args:
         LM (LM): Language Model base class
     """
+
     def __init__(
         self,
         pretrained: str = "GSAI-ML/LLaDA-8B-Instruct",
         steps: int = 128,
         max_length: int = 128,
         block_length: int = 32,
-        device: str = "cuda",
+        device: str = "cuda:1",
+        inject_error: bool = False,
     ) -> None:
         super().__init__()
         self.model = LLaDAModelLM.from_pretrained(
@@ -39,7 +44,9 @@ class LLaDAEvalModel(LM):
         )
         self.model.to(device)
         self.model.eval()
-        self.tokenizer = AutoTokenizer.from_pretrained(pretrained)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            pretrained, inject_error=inject_error
+        )
         self.steps = steps
         self.max_length = max_length
         self.block_length = block_length
@@ -77,6 +84,23 @@ class LLaDAEvalModel(LM):
 
         return chat_templated
 
+    @classmethod
+    def create_from_arg_string(
+        cls, arg_string: str, additional_config: dict | None = None
+    ) -> "LLaDAEvalModel":
+        """Create an instance of the model from a string of arguments.
+
+        Args:
+            arg_string (str): Argument string.
+            additional_config (dict | None, optional): Additional configuration. Defaults to None.
+        Returns:
+            T: An instance of the model.
+        """
+        args = simple_parse_args_string(arg_string)
+        if additional_config:
+            args.update(additional_config)
+        return cls(**args)
+
     def generate_until(self, requests: list[Instance]) -> list[str]:
         pbar = tqdm.tqdm(total=len(requests), desc="Generating responses")
         responses: list[str] = []
@@ -93,8 +117,7 @@ class LLaDAEvalModel(LM):
                 block_length=self.block_length,
             )
             response = self.tokenizer.batch_decode(
-                out[:, input_ids.shape[1]:],
-                skip_special_tokens=True
+                out[:, input_ids.shape[1] :], skip_special_tokens=True
             )[0]
             # until tokenで回答を打ち切るように後処理する
             until_tokens = raw_kwargs.get("until") if raw_kwargs else None
@@ -121,27 +144,41 @@ class LLaDAEvalModel(LM):
 
 def main():
     parser = argparse.ArgumentParser(description="LLaDA Evaluation")
-    parser.add_argument("--model", type=str, default="GSAI-ML/LLaDA-8B-Instruct", help="Model name")
-    parser.add_argument("--task", type=str, default="gsm8k", help="Task name")
-    parser.add_argument("--device", type=str, default="cuda", help="Device to use for evaluation")
-    args = parser.parse_args()
-    evaluation_tracker = EvaluationTracker(
-        output_path="eval_results"
+    parser.add_argument(
+        "--model", type=str, default="GSAI-ML/LLaDA-8B-Instruct", help="Model name"
     )
-    model = LLaDAEvalModel(pretrained=args.model, device=args.device)
+    parser.add_argument("--task", type=str, default="gsm8k", help="Task name")
+    parser.add_argument(
+        "--device", type=str, default="cuda", help="Device to use for evaluation"
+    )
+    args = parser.parse_args()
+    evaluation_tracker = EvaluationTracker(output_path="eval_results")
+    wandb_logger = WandbLogger(
+        project="llada-eval",
+        job_type="eval",
+    )
+    model = LLaDAEvalModel(pretrained=args.model, device=args.device, inject_error=True)
+    # errorを入れない場合
     result = evaluator.simple_evaluate(
         model,
-        model_args=args.model,
+        model_args="--inject_error True",
         tasks=[args.task],
         device=args.device,
         evaluation_tracker=evaluation_tracker,
-        limit=1,
         apply_chat_template=True,
+        limit=100,
+        log_samples=True,
     )
     evaluation_tracker.save_results_aggregated(
-        results=result.pop("samples", {})
+        results=result.get("results", {}),
+        samples=result.get("samples", {}),
     )
+    wandb_logger.post_init(results=result)
+    wandb_logger.log_eval_result()
+    wandb_logger.log_eval_samples(samples=result.get("samples", {}))
     print(result)
 
+
 if __name__ == "__main__":
+    torch.cuda.is_available()
     main()

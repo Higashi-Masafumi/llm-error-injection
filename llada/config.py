@@ -360,9 +360,9 @@ class ModelConfig():
     See :data:`TrainConfig.precision` instead.
     """
 
-    inject_mlp_error: bool = True
+    inject_error: bool = True
     """
-    Whether to inject fused MLP layers into the model.
+    Whether to inject errors into the model.
     """
 
     @property

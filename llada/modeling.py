@@ -883,7 +883,7 @@ class LLaDASequentialBlock(LLaDABlock):
             bias=config.include_bias,
             device=config.init_device,
         )
-        self.inject_error_mlp = config.inject_mlp_error
+        self.inject_error = config.inject_error
 
     def reset_parameters(self):
         super().reset_parameters()
@@ -926,6 +926,13 @@ class LLaDASequentialBlock(LLaDABlock):
         else:
             q, k, v = self.att_proj(self.attn_norm(x)).split(self.fused_dims, dim=-1)
 
+        if self.inject_error:
+            eps = torch.randn_like(q) * 0.01
+            q = q * (1 + eps)
+            k = k * (1 + eps)
+            v = v * (1 + eps)
+            print("inject error in QKV")
+
         # Get attention scores.
         if self._activation_checkpoint_fn is not None:
             att, cache = self._activation_checkpoint_fn(  # type: ignore
@@ -954,7 +961,7 @@ class LLaDASequentialBlock(LLaDABlock):
         else:
             x = self.ff_norm(x)
         x = self.ff_proj(x)
-        if self.inject_error_mlp:
+        if self.inject_error:
             eps = torch.randn_like(x) * 0.01
             x = x * (1 + eps)
             print("inject error in MLP")
@@ -1022,7 +1029,7 @@ class LLaDALlamaBlock(LLaDABlock):
             bias=config.include_bias,
             device=config.init_device,
         )
-        self.inject_error_mlp = config.inject_mlp_error
+        self.inject_error = config.inject_error
 
     def reset_parameters(self):
         super().reset_parameters()
@@ -1036,6 +1043,31 @@ class LLaDALlamaBlock(LLaDABlock):
         init_weights(
             self.config, self.up_proj, d=self.config.d_model, layer_id=None
         )  # new add
+
+    @torch.no_grad()
+    def _qdq_simple(self, x: torch.Tensor, q_bits: int = 8, clip_ratio: float = 2.5) -> torch.Tensor:
+        """
+        簡易 Q→DQ:
+          1) クリップ幅 = RMS(x) * clip_ratio
+          2) scale = clip / 127
+          3) round & clamp で int8 化 → 直ちに復元
+        per-tensor（バッチ・長さ含む全体で1スケール）
+        """
+        # 量子化レンジ
+        qmin = -(2**(q_bits - 1))
+        qmax =  (2**(q_bits - 1)) - 1
+        eps = 1e-8
+
+        # スケール計算（RMSベース）
+        rms = x.detach().pow(2).mean().sqrt().clamp(min=eps)  # スカラー
+        clip = clip_ratio * rms
+        scale = clip / max(qmax, 1)                           # 実数 ≈ scale * q
+
+        # クリップ → スケール → 丸め → 復元
+        x_clamped = torch.clamp(x, -clip, clip)
+        q = torch.round(x_clamped / scale).clamp(qmin, qmax)  # int領域
+        x_q = (q * scale).to(x.dtype)
+        return x_q
 
     def forward(
         self,
@@ -1055,6 +1087,9 @@ class LLaDALlamaBlock(LLaDABlock):
         q = self.q_proj(x_normed)
         k = self.k_proj(x_normed)
         v = self.v_proj(x_normed)
+        if self.inject_error:
+            k = self._qdq_simple(k, q_bits=8, clip_ratio=2.5)
+            v = self._qdq_simple(v, q_bits=8, clip_ratio=2.5)
 
         # Get attention scores.
         if self._activation_checkpoint_fn is not None:
@@ -1084,20 +1119,12 @@ class LLaDALlamaBlock(LLaDABlock):
         else:
             x = self.ff_norm(x)
         x, x_up = self.ff_proj(x), self.up_proj(x)  # new add
-        if self.inject_error_mlp:
-            eps = torch.randn_like(x) * 0.01
-            up_eps = torch.randn_like(x_up) * 0.01
-            x = x * (1 + eps)
-            x_up = x_up * (1 + up_eps)  # new add
         if self._activation_checkpoint_fn is not None:
             x = self._activation_checkpoint_fn(self.act, x)  # type: ignore
         else:
             x = self.act(x)
         x = x * x_up  # new add
         x = self.ff_out(x)
-        if self.inject_error_mlp:
-            eps = torch.randn_like(x) * 0.01
-            x = x * (1 + eps)
         x = self.dropout(x)
         x = og_x + x
 

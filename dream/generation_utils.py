@@ -13,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import warnings
 import copy
+import warnings
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple, Union
 
@@ -22,14 +22,8 @@ import torch
 import torch.distributions as dists
 from torch.nn import functional as F
 from transformers import __version__
-from transformers.generation.configuration_utils import (
-    GenerationConfig
-)
-from transformers.utils import (
-    ModelOutput,
-    is_torchdynamo_compiling,
-    logging,
-)
+from transformers.generation.configuration_utils import GenerationConfig
+from transformers.utils import ModelOutput, is_torchdynamo_compiling, logging
 
 logger = logging.get_logger(__name__)
 

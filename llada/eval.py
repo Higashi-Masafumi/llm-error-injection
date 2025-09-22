@@ -34,19 +34,17 @@ class LLaDAEvalModel(LM):
         steps: int = 128,
         max_length: int = 128,
         block_length: int = 32,
-        device: str = "cuda:1",
+        device: str = "cuda",
         inject_error: bool = False,
     ) -> None:
         super().__init__()
         self.model = LLaDAModelLM.from_pretrained(
             pretrained_model_name_or_path=pretrained,
-            config=LLaDAConfig.from_pretrained(pretrained),
+            config=LLaDAConfig.from_pretrained(pretrained, inject_error=inject_error),
         )
         self.model.to(device)
         self.model.eval()
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            pretrained, inject_error=inject_error
-        )
+        self.tokenizer = AutoTokenizer.from_pretrained(pretrained)
         self.steps = steps
         self.max_length = max_length
         self.block_length = block_length

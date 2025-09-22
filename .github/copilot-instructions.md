@@ -1,4 +1,4 @@
-# pythoの文法
+# pythonの文法
 pythonコードを書く場合は、以下のルールに従ってください
 
 ## type hintのつけ方

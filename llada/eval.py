@@ -10,8 +10,8 @@ from lm_eval import evaluator
 from lm_eval.api.instance import Instance
 from lm_eval.api.model import LM
 from lm_eval.api.registry import register_model
-from lm_eval.loggers.evaluation_tracker import EvaluationTracker
 from lm_eval.loggers import WandbLogger
+from lm_eval.loggers.evaluation_tracker import EvaluationTracker
 from lm_eval.utils import simple_parse_args_string
 from modeling import LLaDAModelLM
 from transformers import AutoTokenizer
@@ -36,18 +36,22 @@ class LLaDAEvalModel(LM):
         block_length: int = 32,
         device: str = "cuda",
         inject_error: bool = False,
+        temperature: float = 0.0,
+        quantization: str | None = None,
     ) -> None:
         super().__init__()
         self.model = LLaDAModelLM.from_pretrained(
             pretrained_model_name_or_path=pretrained,
             config=LLaDAConfig.from_pretrained(pretrained, inject_error=inject_error),
         )
+
         self.model.to(device)
         self.model.eval()
         self.tokenizer = AutoTokenizer.from_pretrained(pretrained)
         self.steps = steps
         self.max_length = max_length
         self.block_length = block_length
+        self.temperature = temperature
         if self.tokenizer.pad_token is None and self.tokenizer.eos_token is not None:
             # Ensure we can pad batched prompts without hitting HF errors.
             self.tokenizer.pad_token = self.tokenizer.eos_token
@@ -113,6 +117,7 @@ class LLaDAEvalModel(LM):
                 steps=self.steps,
                 gen_length=self.max_length,
                 block_length=self.block_length,
+                temperature=self.temperature,
             )
             response = self.tokenizer.batch_decode(
                 out[:, input_ids.shape[1] :], skip_special_tokens=True
@@ -150,16 +155,28 @@ def main():
         "--device", type=str, default="cuda", help="Device to use for evaluation"
     )
     args = parser.parse_args()
+    config = {
+        "temperature": 0.1,
+        "inject_error": True,
+        "quantization": "quanto",  # "hqq", "quanto", or None
+    }
     evaluation_tracker = EvaluationTracker(output_path="eval_results")
     wandb_logger = WandbLogger(
         project="llada-eval",
         job_type="eval",
+        config=config,
     )
-    model = LLaDAEvalModel(pretrained=args.model, device=args.device, inject_error=True)
+    model = LLaDAEvalModel(
+        pretrained=args.model,
+        device=args.device,
+        inject_error=config["inject_error"],
+        temperature=config["temperature"],
+        quantization=config["quantization"],
+    )
     # errorを入れない場合
     result = evaluator.simple_evaluate(
         model,
-        model_args="--inject_error True",
+        model_args=f"--inject_error {config['inject_error']} --temperature {config['temperature']}",
         tasks=[args.task],
         device=args.device,
         evaluation_tracker=evaluation_tracker,

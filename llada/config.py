@@ -1,6 +1,7 @@
 """
 LLaDA configuration
 """
+
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from glob import glob
@@ -125,7 +126,7 @@ class InitFnType(StrEnum):
 
 
 @dataclass
-class ModelConfig():
+class ModelConfig:
     """
     LLaDA (model) configuration.
     """
@@ -360,7 +361,7 @@ class ModelConfig():
     See :data:`TrainConfig.precision` instead.
     """
 
-    inject_error: bool = True
+    inject_error: bool = False
     """
     Whether to inject errors into the model.
     """
@@ -385,6 +386,7 @@ class ModelConfig():
                 raise Exception(
                     "You can't set `multi_query_attention` and `n_kv_heads` at the same time."
                 )
+
 
 class ActivationCheckpointingStrategy(StrEnum):
     whole_layer = "whole_layer"
@@ -443,9 +445,7 @@ class LLaDAConfig(PretrainedConfig):
         all_kwargs.update(kwargs)
         all_kwargs.update({"use_cache": use_cache})
         all_kwargs.update(
-            {
-                "architectures": all_kwargs.get("architectures", ["LLaDAModelLM"])
-            }
+            {"architectures": all_kwargs.get("architectures", ["LLaDAModelLM"])}
         )
         super().__init__(**all_kwargs)
 

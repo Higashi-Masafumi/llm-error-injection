@@ -25,6 +25,8 @@ from typing import List, Optional, Tuple, Union
 
 import torch
 import torch.utils.checkpoint
+from config import DreamConfig
+from generation_utils import DreamGenerationConfig, DreamGenerationMixin
 from torch import nn
 from transformers import PretrainedConfig
 from transformers.activations import ACT2FN
@@ -39,9 +41,6 @@ from transformers.utils import (
     is_flash_attn_greater_or_equal_2_10,
     logging,
 )
-
-from .config import DreamConfig
-from .generation_utils import DreamGenerationConfig, DreamGenerationMixin
 
 if is_flash_attn_2_available():
     from transformers.modeling_flash_attention_utils import _flash_attention_forward

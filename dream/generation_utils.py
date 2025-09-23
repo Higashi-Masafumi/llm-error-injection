@@ -236,7 +236,7 @@ class DreamGenerationMixin:
 
     def _prepare_generation_config(
         self, generation_config: Optional[DreamGenerationConfig], **kwargs: Dict
-    ) -> DreamGenerationConfig:
+    ) -> Tuple[DreamGenerationConfig, Dict[str, Any]]:
         """
         Prepares the base generation config, then applies any generation configuration options from kwargs. This
         function handles retrocompatibility with respect to configuration files.
@@ -250,9 +250,11 @@ class DreamGenerationMixin:
         # `torch.compile` can't compile `copy.deepcopy`, arguments in `kwargs` that are part of `generation_config`
         # will mutate the object with `.update`. As such, passing these arguments through `kwargs` is disabled -- an
         # exception will be raised in `_validate_model_kwargs`
+        unused_model_kwargs: Dict[str, Any] = kwargs
+
         if not is_torchdynamo_compiling():
             generation_config = copy.deepcopy(generation_config)
-            _kwargs = generation_config.update(**kwargs)
+            unused_model_kwargs = generation_config.update(**kwargs)
             # If `generation_config` is provided, let's fallback ALL special tokens to the default values for the model
             if not using_model_generation_config:
                 if generation_config.bos_token_id is None:
@@ -266,7 +268,7 @@ class DreamGenerationMixin:
                         self.generation_config.mask_token_id
                     )
 
-        return generation_config
+        return generation_config, unused_model_kwargs
 
     def _prepare_special_tokens(
         self,
@@ -332,11 +334,13 @@ class DreamGenerationMixin:
         **kwargs,
     ) -> Union[DreamModelOutput, torch.LongTensor]:
         # 1. Handle `generation_config` and kwargs that might update it, and validate the `.generate()` call
-        generation_config = self._prepare_generation_config(generation_config, **kwargs)
-        generation_tokens_hook_func = kwargs.pop(
+        generation_config, model_kwargs = self._prepare_generation_config(
+            generation_config, **kwargs
+        )
+        generation_tokens_hook_func = model_kwargs.pop(
             "generation_tokens_hook_func", lambda step, x, logits: x
         )
-        generation_logits_hook_func = kwargs.pop(
+        generation_logits_hook_func = model_kwargs.pop(
             "generation_logits_hook_func", lambda step, x, logits: logits
         )
 
@@ -344,7 +348,7 @@ class DreamGenerationMixin:
         assert inputs is not None
         input_ids = inputs
         device = input_ids.device
-        attention_mask = kwargs.pop("attention_mask", None)
+        attention_mask = model_kwargs.pop("attention_mask", None)
         self._prepare_special_tokens(generation_config, device=device)
 
         # 3. Prepare `max_length`.
@@ -390,6 +394,8 @@ class DreamGenerationMixin:
             input_ids=input_ids,
             attention_mask=attention_mask,
         )
+
+        self._validate_model_kwargs(model_kwargs.keys())
 
         result = self._sample(
             input_ids,

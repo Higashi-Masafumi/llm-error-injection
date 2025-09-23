@@ -14,7 +14,7 @@ from lm_eval.loggers import WandbLogger
 from lm_eval.loggers.evaluation_tracker import EvaluationTracker
 from lm_eval.utils import simple_parse_args_string
 from modeling import LLaDAModelLM
-from transformers import AutoTokenizer
+from transformers import AutoModel, AutoTokenizer, HqqConfig
 
 logging.basicConfig(level=logging.INFO)
 eval_logger = logging.getLogger(__name__)
@@ -37,15 +37,31 @@ class LLaDAEvalModel(LM):
         device: str = "cuda",
         inject_error: bool = False,
         temperature: float = 0.0,
+        nbits: int = 4,
         quantization: str | None = None,
     ) -> None:
         super().__init__()
-        self.model = LLaDAModelLM.from_pretrained(
-            pretrained_model_name_or_path=pretrained,
-            config=LLaDAConfig.from_pretrained(pretrained, inject_error=inject_error),
-        )
+        if quantization == "hqq":
+            hqq_config = HqqConfig(nbits=nbits)
+            self.model = AutoModel.from_pretrained(
+                pretrained,
+                trust_remote_code=True,
+                torch_dtype=torch.bfloat16,
+                config=LLaDAConfig.from_pretrained(pretrained),
+                device_map="cuda",
+                quantization_config=hqq_config,
+            )
 
-        self.model.to(device)
+        if quantization is None:
+            self.model = LLaDAModelLM.from_pretrained(
+                pretrained,
+                trust_remote_code=True,
+                torch_dtype=torch.bfloat16,
+                config=LLaDAConfig.from_pretrained(
+                    pretrained, inject_error=inject_error
+                ),
+            )
+            self.model.to(device)
         self.model.eval()
         self.tokenizer = AutoTokenizer.from_pretrained(pretrained)
         self.steps = steps
@@ -158,7 +174,7 @@ def main():
     config = {
         "temperature": 0.1,
         "inject_error": True,
-        "quantization": "quanto",  # "hqq", "quanto", or None
+        "quantization": "hqq",  # "hqq", "quanto", or None
     }
     evaluation_tracker = EvaluationTracker(output_path="eval_results")
     wandb_logger = WandbLogger(

@@ -175,6 +175,7 @@ def main():
         "temperature": 0.1,
         "inject_error": True,
         "quantization": "hqq",  # "hqq", "quanto", or None
+        "nbits": 2,
     }
     evaluation_tracker = EvaluationTracker(output_path="eval_results")
     wandb_logger = WandbLogger(
@@ -188,6 +189,7 @@ def main():
         inject_error=config["inject_error"],
         temperature=config["temperature"],
         quantization=config["quantization"],
+        nbits=config["nbits"],
     )
     # errorを入れない場合
     result = evaluator.simple_evaluate(
@@ -204,7 +206,7 @@ def main():
         results=result.get("results", {}),
         samples=result.get("samples", {}),
     )
-    wandb_logger.post_init(results=result)
+    wandb_logger.post_init(result)
     wandb_logger.log_eval_result()
     wandb_logger.log_eval_samples(samples=result.get("samples", {}))
     print(result)

@@ -4,3 +4,5 @@ accelerate==0.34.2
 tqdm
 deepspeed
 wandb
+hqq
+optimum-quanto

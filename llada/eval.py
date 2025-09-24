@@ -13,6 +13,7 @@ from lm_eval.api.registry import register_model
 from lm_eval.loggers import WandbLogger
 from lm_eval.loggers.evaluation_tracker import EvaluationTracker
 from lm_eval.utils import simple_parse_args_string
+from lm_eval.__main__ import cli_evaluate
 from modeling import LLaDAModelLM
 from transformers import AutoModel, AutoTokenizer, HqqConfig
 
@@ -20,7 +21,7 @@ logging.basicConfig(level=logging.INFO)
 eval_logger = logging.getLogger(__name__)
 
 
-@register_model("llada")
+@register_model("llada_eval")
 class LLaDAEvalModel(LM):
     """LLaDA Evaluation Model
 
@@ -39,6 +40,8 @@ class LLaDAEvalModel(LM):
         temperature: float = 0.0,
         nbits: int = 4,
         quantization: str | None = None,
+        batch_size: int = 1,
+        **kwargs,
     ) -> None:
         super().__init__()
         if quantization == "hqq":
@@ -60,8 +63,8 @@ class LLaDAEvalModel(LM):
                 config=LLaDAConfig.from_pretrained(
                     pretrained, inject_error=inject_error
                 ),
+                device_map="cuda",
             )
-            self.model.to(device)
         self.model.eval()
         self.tokenizer = AutoTokenizer.from_pretrained(pretrained)
         self.steps = steps
@@ -115,6 +118,10 @@ class LLaDAEvalModel(LM):
             T: An instance of the model.
         """
         args = simple_parse_args_string(arg_string)
+        # Noneの文字列をNoneに変換
+        for key, value in args.items():
+            if value == "None":
+                args[key] = None
         if additional_config:
             args.update(additional_config)
         return cls(**args)
@@ -213,5 +220,4 @@ def main():
 
 
 if __name__ == "__main__":
-    torch.cuda.is_available()
-    main()
+    cli_evaluate()

@@ -47,9 +47,8 @@ class DreamEvalModel(LM):
                 torch_dtype=torch.bfloat16,
                 config=DreamConfig.from_pretrained(pretrained),
                 device_map="cuda",
-                quantization_config=hqq_config
+                quantization_config=hqq_config,
             )
-            self.device = self.model.device
         elif quantization is None:
             self.model = DreamModel.from_pretrained(
                 pretrained,
@@ -57,12 +56,15 @@ class DreamEvalModel(LM):
                 torch_dtype=torch.bfloat16,
                 config=DreamConfig.from_pretrained(pretrained),
             )
-            self.model.to(device)
-            self.device = device
+            self.model = self.model.to("cuda" if torch.cuda.is_available() else "cpu")
+            self.device = self.model.device
+            print(f"Model loaded to {self.device}")
         else:
             raise NotImplementedError(f"Quantization {quantization} not implemented.")
         self.model.eval()
-        self.tokenizer = AutoTokenizer.from_pretrained(pretrained)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            pretrained, trust_remote_code=True
+        )
         self.max_prompt_length = max_prompt_length
         self.max_new_tokens = max_new_tokens
         self.classifier_free_guidance_scale = classifier_free_guidance_scale
@@ -81,6 +83,10 @@ class DreamEvalModel(LM):
         additional_config: dict | None = None,
     ) -> "DreamEvalModel":
         config = simple_parse_args_string(arg_string)
+        # Noneの文字列をNoneに変換
+        for key, value in config.items():
+            if value == "None":
+                config[key] = None
         if additional_config:
             config.update(additional_config)
         return cls(**config)
@@ -133,7 +139,6 @@ class DreamEvalModel(LM):
                     max_new_tokens=self.max_new_tokens,
                     steps=self.diffusion_steps,
                     temperature=self.temperature,
-                    device=self.device,
                 )
             generated_ids = outputs[:, input_ids.shape[1] :]
             text = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[
@@ -232,6 +237,7 @@ class DreamEvalModel(LM):
 
     def loglikelihood_rolling(self, requests: list[Instance]) -> list[float]:
         raise NotImplementedError("loglikelihood_rolling is not implemented yet.")
+
 
 if __name__ == "__main__":
     cli_evaluate()

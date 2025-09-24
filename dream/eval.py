@@ -8,7 +8,6 @@ from lm_eval.api.model import LM
 from lm_eval.api.registry import register_model
 from lm_eval.utils import simple_parse_args_string
 from modeling import DreamModel
-from generation_utils import DreamGenerationConfig
 from tqdm import tqdm
 from transformers import AutoModel, AutoTokenizer, HqqConfig
 from transformers.utils import logging
@@ -36,6 +35,7 @@ class DreamEvalModel(LM):
         do_sample: bool = True,
         alg: str | None = "entropy",
         alg_temp: float = 0.0,
+        top_p: float = 0.9,
         quantization: str | None = None,
         nbits: int = 4,
         batch_size: int = 1,
@@ -52,6 +52,7 @@ class DreamEvalModel(LM):
                 device_map="cuda",
                 quantization_config=hqq_config,
             )
+            self.device = self.model.device
         elif quantization is None:
             self.model = DreamModel.from_pretrained(
                 pretrained,
@@ -75,6 +76,7 @@ class DreamEvalModel(LM):
         self.do_sample = do_sample
         self.alg = alg
         self.alg_temp = alg_temp
+        self.top_p = top_p
 
     @property
     def tokenizer_name(self):
@@ -144,6 +146,7 @@ class DreamEvalModel(LM):
                 temperature=self.temperature,
                 alg=self.alg,
                 alg_temp=self.alg_temp,
+                top_p=self.top_p,
             )
             generated_ids = outputs[:, input_ids.shape[1] :]
             text = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[

@@ -8,6 +8,7 @@ from lm_eval.api.model import LM
 from lm_eval.api.registry import register_model
 from lm_eval.utils import simple_parse_args_string
 from modeling import DreamModel
+from generation_utils import DreamGenerationConfig
 from tqdm import tqdm
 from transformers import AutoModel, AutoTokenizer, HqqConfig
 from transformers.utils import logging
@@ -26,13 +27,15 @@ class DreamEvalModel(LM):
     def __init__(
         self,
         pretrained: str = "Dream-org/Dream-v0-Instruct-7B",
-        max_prompt_length: int = 1024,
         max_new_tokens: int = 128,
         device: str = "cuda",
         classifier_free_guidance_scale: float = 1.0,
         temperature: float = 0.0,
         sampling_eps: float = 1e-3,
         diffusion_steps: int = 32,
+        do_sample: bool = True,
+        alg: str | None = "entropy",
+        alg_temp: float = 0.0,
         quantization: str | None = None,
         nbits: int = 4,
         batch_size: int = 1,
@@ -58,19 +61,20 @@ class DreamEvalModel(LM):
             )
             self.model = self.model.to("cuda" if torch.cuda.is_available() else "cpu")
             self.device = self.model.device
-            print(f"Model loaded to {self.device}")
         else:
             raise NotImplementedError(f"Quantization {quantization} not implemented.")
         self.model.eval()
         self.tokenizer = AutoTokenizer.from_pretrained(
             pretrained, trust_remote_code=True
         )
-        self.max_prompt_length = max_prompt_length
         self.max_new_tokens = max_new_tokens
         self.classifier_free_guidance_scale = classifier_free_guidance_scale
         self.temperature = temperature
         self.sampling_eps = sampling_eps
         self.diffusion_steps = diffusion_steps
+        self.do_sample = do_sample
+        self.alg = alg
+        self.alg_temp = alg_temp
 
     @property
     def tokenizer_name(self):
@@ -127,19 +131,20 @@ class DreamEvalModel(LM):
     def generate_until(self, requests: list[Instance]) -> list[str]:
         pbar = tqdm(requests, desc="Generating responses", total=len(requests))
         results = []
-        for request in pbar:
+        for request in requests:
             args = request.args
             context = args[0]
             raw_kwargs = args[1] if len(args) > 1 else {}
             input_ids = self.tokenizer(context, return_tensors="pt").input_ids
-            input_ids = input_ids[:, -self.max_prompt_length :].to(self.device)
-            with torch.no_grad():
-                outputs = self.model.diffusion_generate(
-                    inputs=input_ids,
-                    max_new_tokens=self.max_new_tokens,
-                    steps=self.diffusion_steps,
-                    temperature=self.temperature,
-                )
+            input_ids = input_ids.to(self.device)
+            outputs = self.model.diffusion_generate(
+                inputs=input_ids,
+                max_new_tokens=self.max_new_tokens,
+                steps=self.diffusion_steps,
+                temperature=self.temperature,
+                alg=self.alg,
+                alg_temp=self.alg_temp,
+            )
             generated_ids = outputs[:, input_ids.shape[1] :]
             text = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[
                 0
@@ -154,7 +159,8 @@ class DreamEvalModel(LM):
                         text = text[:stop_pos]
                         break
             results.append(text)
-            pbar.set_postfix({"response": text})
+            print(f"Result: {text}")
+            pbar.update(1)
         return results
 
     def loglikelihood(self, requests: list[Instance]) -> list[tuple[float, bool]]:
@@ -180,10 +186,6 @@ class DreamEvalModel(LM):
             if len(continuation_ids) == 0:
                 results.append((0.0, True))
                 continue
-
-            # Cap context to the configured maximum prompt length.
-            if self.max_prompt_length is not None:
-                context_ids = context_ids[-self.max_prompt_length :]
 
             # Ensure at least one prefix token so the first continuation token can be scored.
             if len(context_ids) == 0:

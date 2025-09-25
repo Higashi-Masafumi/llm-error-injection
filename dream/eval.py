@@ -29,7 +29,7 @@ class DreamEvalModel(LM):
         max_new_tokens: int = 128,
         device: str = "cuda",
         classifier_free_guidance_scale: float = 1.0,
-        temperature: float = 0.0,
+        temperature: float = 0.2,
         sampling_eps: float = 1e-3,
         diffusion_steps: int = 32,
         do_sample: bool = True,

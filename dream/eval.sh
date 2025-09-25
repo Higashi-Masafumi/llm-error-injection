@@ -1,13 +1,14 @@
 model_name="dream_eval"
 limit=100
 quantization=hqq  # "hqq", "quanto", or None
-nbits=8  # 2, 4, 8 only for "hqq"
-max_new_tokens=128
-diffusion_steps=32
+nbits=4  # 2, 4, 8 only for "hqq"
+max_new_tokens=256
+diffusion_steps=256
 weight_and_biases_project="dream-eval"
 task="gsm8k"
 batch_size=1
 num_fewshot=5  # Number of few-shot examples to use; set to 0 for zero-shot
+output_dir="eval_outputs"
 
 export HF_ALLOW_CODE_EVAL=1
 export TRANSFORMERS_TRUST_REMOTE_CODE=true
@@ -21,4 +22,5 @@ accelerate launch eval.py \
     --num_fewshot $num_fewshot \
     --batch_size $batch_size \
     --apply_chat_template \
+    --output_path $output_dir \
     --confirm_run_unsafe_code

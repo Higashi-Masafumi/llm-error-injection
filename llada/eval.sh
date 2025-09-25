@@ -16,4 +16,5 @@ accelerate launch eval.py \
     --wandb_args "project=$weight_and_biases_project" \
     --tasks $task \
     --batch_size $batch_size \
+    --apply_chat_template \
     --confirm_run_unsafe_code

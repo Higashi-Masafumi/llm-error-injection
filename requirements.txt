@@ -6,3 +6,4 @@ deepspeed
 wandb
 hqq
 optimum-quanto
+torchvision

@@ -77,6 +77,10 @@ class DreamEvalModel(LM):
         self.alg = alg
         self.alg_temp = alg_temp
         self.top_p = top_p
+        # memory allocated on device
+        eval_logger.info(
+            f"Memory allocated on device: {torch.cuda.memory_allocated(self.device)}"
+        )
 
     @property
     def tokenizer_name(self):

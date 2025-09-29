@@ -7,13 +7,13 @@ import tqdm
 from config import LLaDAConfig
 from generation_utils import generate
 from lm_eval import evaluator
+from lm_eval.__main__ import cli_evaluate
 from lm_eval.api.instance import Instance
 from lm_eval.api.model import LM
 from lm_eval.api.registry import register_model
 from lm_eval.loggers import WandbLogger
 from lm_eval.loggers.evaluation_tracker import EvaluationTracker
 from lm_eval.utils import simple_parse_args_string
-from lm_eval.__main__ import cli_evaluate
 from modeling import LLaDAModelLM
 from transformers import AutoModel, AutoTokenizer, HqqConfig
 
@@ -54,7 +54,6 @@ class LLaDAEvalModel(LM):
                 device_map="cuda",
                 quantization_config=hqq_config,
             )
-
         if quantization is None:
             self.model = LLaDAModelLM.from_pretrained(
                 pretrained,
@@ -71,6 +70,9 @@ class LLaDAEvalModel(LM):
         self.max_length = max_length
         self.block_length = block_length
         self.temperature = temperature
+        eval_logger.info(
+            f"Model memory allocated on device: {torch.cuda.max_memory_allocated(device)}"
+        )
         if self.tokenizer.pad_token is None and self.tokenizer.eos_token is not None:
             # Ensure we can pad batched prompts without hitting HF errors.
             self.tokenizer.pad_token = self.tokenizer.eos_token

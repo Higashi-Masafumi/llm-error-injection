@@ -105,40 +105,45 @@ def generate(
     return x
 
 
-device = "cuda"
-model = (
-    AutoModel.from_pretrained(
-        "inclusionAI/LLaDA-MoE-7B-A1B-Instruct",
-        trust_remote_code=True,
-        torch_dtype=torch.bfloat16,
+if __name__ == "__main__":
+    device = "cuda"
+    model = (
+        AutoModel.from_pretrained(
+            "inclusionAI/LLaDA-MoE-7B-A1B-Instruct",
+            trust_remote_code=True,
+            torch_dtype=torch.bfloat16,
+        )
+        .to(device)
+        .eval()
     )
-    .to(device)
-    .eval()
-)
-tokenizer = AutoTokenizer.from_pretrained(
-    "inclusionAI/LLaDA-MoE-7B-A1B-Instruct", trust_remote_code=True
-)
+    tokenizer = AutoTokenizer.from_pretrained(
+        "inclusionAI/LLaDA-MoE-7B-A1B-Instruct", trust_remote_code=True
+    )
 
-prompt = "Lily can run 12 kilometers per hour for 4 hours. After that, she runs 6 kilometers per hour. How many kilometers can she run in 8 hours?"
-m = [
-    {"role": "system", "content": "You are a helpful AI assistant."},
-    {"role": "user", "content": prompt},
-]
-prompt = tokenizer.apply_chat_template(m, add_generation_prompt=True, tokenize=False)
+    prompt = "Lily can run 12 kilometers per hour for 4 hours. After that, she runs 6 kilometers per hour. How many kilometers can she run in 8 hours?"
+    m = [
+        {"role": "system", "content": "You are a helpful AI assistant."},
+        {"role": "user", "content": prompt},
+    ]
+    prompt = tokenizer.apply_chat_template(
+        m, add_generation_prompt=True, tokenize=False
+    )
 
-input_ids = tokenizer(prompt)["input_ids"]
-input_ids = torch.tensor(input_ids).to(device).unsqueeze(0)
+    input_ids = tokenizer(prompt)["input_ids"]
+    input_ids = torch.tensor(input_ids).to(device).unsqueeze(0)
 
-text = generate(
-    model,
-    input_ids,
-    steps=128,
-    gen_length=128,
-    block_length=32,
-    temperature=0.0,
-    cfg_scale=0.0,
-    remasking="low_confidence",
-)
-print(
-    tokenizer.batch_decode(text[:, input_ids.shape[1] :], skip_special_tokens=False)[0]
-)
+    text = generate(
+        model,
+        input_ids,
+        steps=128,
+        gen_length=128,
+        block_length=32,
+        temperature=0.0,
+        cfg_scale=0.0,
+        remasking="low_confidence",
+    )
+    print(
+        tokenizer.batch_decode(
+            text[:, input_ids.shape[1] :], skip_special_tokens=False
+        )[0]
+    )

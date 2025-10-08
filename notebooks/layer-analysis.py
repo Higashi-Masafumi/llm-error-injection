@@ -17,6 +17,8 @@ from dream import DreamModel
 LLADA_PRETRAINED_NAME = "GSAI-ML/LLaDA-8B-Instruct"
 DREAM_PRETRAINED_NAME = "Dream-org/Dream-v0-Instruct-7B"
 
+# %%
+
 llada = LLaDAModelLM.from_pretrained(LLADA_PRETRAINED_NAME)
 dream = DreamModel.from_pretrained(DREAM_PRETRAINED_NAME)
 
@@ -38,10 +40,12 @@ model_graph = draw_graph(llada.model, inputs)
 model_graph.visual_graph
 
 # %%
+from transformers import AutoTokenizer, AutoModel
+from torchview import draw_graph
+dream = AutoModel.from_pretrained(DREAM_PRETRAINED_NAME, trust_remote_code=True)
 dream_tokenizer = AutoTokenizer.from_pretrained(DREAM_PRETRAINED_NAME, trust_remote_code=True)
 inputs = dream_tokenizer("Hello, my dog is cute", return_tensors="pt")
-dream.eval()
-model_graph = draw_graph(dream.model, inputs, device="cpu")
+model_graph = draw_graph(dream.model, inputs["input_ids"])
 model_graph.visual_graph
 
 # %%

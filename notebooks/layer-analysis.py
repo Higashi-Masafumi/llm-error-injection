@@ -30,3 +30,18 @@ print("Dream Model Structure:")
 dream.model
 
 # %%
+from transformers import AutoTokenizer
+from torchview import draw_graph
+llada_tokenizer = AutoTokenizer.from_pretrained(LLADA_PRETRAINED_NAME, trust_remote_code=True)
+inputs = llada_tokenizer("Hello, my dog is cute", return_tensors="pt")
+model_graph = draw_graph(llada.model, inputs)
+model_graph.visual_graph
+
+# %%
+dream_tokenizer = AutoTokenizer.from_pretrained(DREAM_PRETRAINED_NAME, trust_remote_code=True)
+inputs = dream_tokenizer("Hello, my dog is cute", return_tensors="pt")
+dream.eval()
+model_graph = draw_graph(dream.model, inputs, device="cpu")
+model_graph.visual_graph
+
+# %%

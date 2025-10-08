@@ -4,7 +4,9 @@ services:
   # サービス名（dev-containerなど、ご自身の分かりやすい名前を付けます）
   dev-container:
     # DockerイメージID
-    image: ttorch-nvidia:u22.04c12.2t2.2.0v1
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
 
     # コンテナ名
     container_name: diffusion-lm-error-injection

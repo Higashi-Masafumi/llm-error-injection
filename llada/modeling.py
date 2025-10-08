@@ -25,7 +25,13 @@ import torch
 import torch.backends.cuda
 import torch.nn as nn
 import torch.nn.functional as F
-from config import (
+from torch import einsum
+from transformers import PreTrainedModel
+from transformers.cache_utils import Cache
+from transformers.modeling_outputs import CausalLMOutputWithPast
+from transformers.models.auto import AutoModel
+
+from .config import (
     ActivationCheckpointingStrategy,
     ActivationType,
     BlockType,
@@ -35,11 +41,6 @@ from config import (
     ModelConfig,
     StrEnum,
 )
-from torch import einsum
-from transformers import PreTrainedModel
-from transformers.cache_utils import Cache
-from transformers.modeling_outputs import CausalLMOutputWithPast
-from transformers.models.auto import AutoModel
 
 if sys.version_info.minor > 8:
     from collections.abc import MutableMapping

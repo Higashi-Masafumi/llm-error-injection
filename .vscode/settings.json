@@ -1,0 +1,11 @@
+{
+  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportMissingDocstring": "none",
+    "reportUnusedVariable": "none",
+    "reportUnusedImport": "none",
+    "reportMissingTypeStubs": "none",
+    "reportGeneralTypeIssues": "none"
+  },
+  "pylint.enabled": false
+}

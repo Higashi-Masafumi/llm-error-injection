@@ -1,8 +1,9 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
-from modeling import LLaDAModelLM
 from transformers import AutoTokenizer
+
+from .modeling import LLaDAModelLM
 
 
 def add_gumbel_noise(logits, temperature):

@@ -41,10 +41,7 @@
                 "isort.args": ["--profile", "black"],
 
                 // autodocstring設定
-                "autoDocstring.docstringFormat": "google",
-
-                "files.trimTrailingWhitespace": true,
-                "files.insertFinalNewline": true
+                "autoDocstring.docstringFormat": "google"
             }
         }
     }

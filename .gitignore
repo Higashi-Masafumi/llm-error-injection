@@ -211,3 +211,4 @@ wandb/
 
 eval_outputs/
 eval_results/
+data/

@@ -9,3 +9,5 @@ optimum-quanto
 torchvision
 lightning
 rich
+litdata==0.2.57
+lightning-cloud

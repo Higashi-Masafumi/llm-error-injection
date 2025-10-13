@@ -14,6 +14,7 @@ import seaborn as sns
 # modelの読み込み
 from llada import LLaDAModelLM
 from dream import DreamModel
+from block_diffusion import BD3LM
 LLADA_PRETRAINED_NAME = "GSAI-ML/LLaDA-8B-Instruct"
 DREAM_PRETRAINED_NAME = "Dream-org/Dream-v0-Instruct-7B"
 

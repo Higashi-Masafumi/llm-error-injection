@@ -11,3 +11,5 @@ lightning
 rich
 litdata==0.2.57
 lightning-cloud
+hydra-core
+flash-attn==2.5.8

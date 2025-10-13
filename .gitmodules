@@ -1,0 +1,7 @@
+[submodule "bd3lms"]
+	path = bd3lms
+	url = https://github.com/kuleshov-group/bd3lms.git
+[submodule "mdlm"]
+	path = mdlm
+	url = https://github.com/kuleshov-group/mdlm.git
+

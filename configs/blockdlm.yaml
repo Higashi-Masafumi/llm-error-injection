@@ -1,0 +1,19 @@
+defaults:
+  - _self_
+  - models: blocksize16
+  - callbacks: default
+  - logger: default
+
+tasks: gsm8k
+batch_size: 1
+num_fewshot: 0
+output_path: outputs/eval_results
+
+top_p: 0.9
+max_new_tokens: 128
+context_size: 1024
+device: cuda
+dtype: bfloat16
+
+sampling:
+  kv_cache: true

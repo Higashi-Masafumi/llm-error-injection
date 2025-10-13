@@ -1,0 +1,4 @@
+name: blocksize4
+pretrained_name: kuleshov-group/bd3lm-owt-block_size4
+block_size: 4
+tokenizer_name: gpt2

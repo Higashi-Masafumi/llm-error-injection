@@ -1,0 +1,4 @@
+name: blocksize16
+pretrained_name: kuleshov-group/bd3lm-owt-block_size16
+block_size: 16
+tokenizer_name: gpt2
